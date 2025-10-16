@@ -70,6 +70,9 @@
           <span class="visually-hidden">Chargement...</span>
         </div>
       </div>
+      <div class="col-12">
+        <small class="text-muted">Réponses valides: <span id="validCount">0</span></small>
+      </div>
     </form>
 
     <div id="content" class="mt-4 p-3 bg-white rounded shadow-sm" style="min-height:60px;"></div>
@@ -85,6 +88,16 @@
       const clearBtn = document.getElementById('clearBtn');
       const container = document.getElementById('content');
       const spinner = document.getElementById('spinner');
+      const counterEl = document.getElementById('validCount');
+
+      // initialize counter from localStorage
+      try {
+        const key = 'validApiResponses';
+        const init = Number(localStorage.getItem(key) || '0');
+        if (counterEl) counterEl.textContent = String(init);
+      } catch (e) {
+        console.warn('Could not read localStorage counter', e);
+      }
 
       if (!form) {
         console.error('Form not found: #blackBoxForm');
@@ -125,7 +138,7 @@
           });
 
           if (!res.ok) {
-            container.textContent = `Erreur de récupération de l’API: ${res.status} ${res.statusText}`;
+            container.textContent = `Erreur de récupération de l'API: ${res.status} ${res.statusText}`;
             console.error('HTTP error', res.status, res.statusText);
             return;
           }
@@ -133,9 +146,10 @@
           const data = await res.json();
 
           const isEmptyObject = data && typeof data === 'object' && Object.keys(data).length === 0;
-          if (!data || isEmptyObject || (typeof data.content === 'undefined' && typeof data.tag === 'undefined')) {
+          const isValidResponse = !!data && !isEmptyObject && (typeof data.content !== 'undefined' || typeof data.tag !== 'undefined') && String(data.content || '') !== '';
+          if (!isValidResponse) {
             container.textContent = 'Ça ne renvoie rien.';
-            console.log('API returned empty:', data);
+            console.log('API returned empty or invalid:', data);
             return;
           }
 
@@ -151,6 +165,17 @@
           newDiv.textContent = content;
           container.appendChild(newDiv);
           console.log('API response', data);
+          // increment counter for valid response
+          try {
+            const key = 'validApiResponses';
+            const prev = Number(localStorage.getItem(key) || '0');
+            const next = prev + 1;
+            localStorage.setItem(key, String(next));
+            const counterEl = document.getElementById('validCount');
+            if (counterEl) counterEl.textContent = String(next);
+          } catch (e) {
+            console.warn('Could not persist counter to localStorage', e);
+          }
         } catch (err) {
           console.error('Erreur:', err);
           container.textContent = 'Erreur de récupération de l’API.';
@@ -163,6 +188,15 @@
       clearBtn.addEventListener('click', () => {
         form.reset();
         container.innerHTML = '';
+        // reset counter
+        try {
+          const key = 'validApiResponses';
+          localStorage.setItem(key, '0');
+          const counterEl = document.getElementById('validCount');
+          if (counterEl) counterEl.textContent = '0';
+        } catch (e) {
+          console.warn('Could not reset localStorage counter', e);
+        }
       });
 
       console.log('Black box ready — API calls only when clicking the button');
