@@ -23,28 +23,149 @@
   </style>
 </head>
 <body>
-  <h1>Contenu récupéré depuis l'API</h1>
-  <button id="fetchBtn">Charger le contenu</button>
+  <div class="container mt-4">
+    <h1 class="mb-4">Hack us</h1>
 
-  <div id="content"></div>
+    <form id="blackBoxForm" class="row g-3">
+      <div class="col-md-4">
+        <label for="keyword" class="form-label">Mot-clé</label>
+        <input type="text" class="form-control" id="keyword" name="keyword" placeholder="ex : efrei" />
+      </div>
 
+      <div class="col-md-4">
+        <label for="mode" class="form-label">Mode</label>
+        <select id="mode" name="mode" class="form-select">
+          <option value="auto">Auto</option>
+          <option value="aggressif">Agressif</option>
+          <option value="doux">Doux</option>
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Options</label>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" value="opt1" id="opt1" name="options">
+          <label class="form-check-label" for="opt1">Option 1</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" value="opt2" id="opt2" name="options">
+          <label class="form-check-label" for="opt2">Option 2</label>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <label for="strength" class="form-label">Intensité</label>
+        <input type="range" class="form-range" min="0" max="10" id="strength" name="strength">
+      </div>
+
+      <div class="col-md-3">
+        <label for="count" class="form-label">Nombre (0-100)</label>
+        <input type="number" class="form-control" id="count" name="count" min="0" max="100" value="1">
+      </div>
+
+      <div class="col-12 d-flex align-items-center gap-2">
+        <button type="button" id="fetchBtn" class="btn btn-primary">Tester la combinaison</button>
+        <button type="button" id="clearBtn" class="btn btn-outline-secondary">Réinitialiser</button>
+        <div id="spinner" class="spinner-border text-primary" role="status" style="display:none; width:1.5rem; height:1.5rem;">
+          <span class="visually-hidden">Chargement...</span>
+        </div>
+      </div>
+    </form>
+
+    <div id="content" class="mt-4 p-3 bg-white rounded shadow-sm" style="min-height:60px;"></div>
+  </div>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="" crossorigin="anonymous">
   <script>
-    document.getElementById('fetchBtn').addEventListener('click', async () => {
+    document.addEventListener('DOMContentLoaded', () => {
+      const apiBase = 'https://h0ag.alwaysdata.net/api/heyyy.php'; 
+
+      const form = document.getElementById('blackBoxForm');
+      const fetchBtn = document.getElementById('fetchBtn');
+      const clearBtn = document.getElementById('clearBtn');
       const container = document.getElementById('content');
+      const spinner = document.getElementById('spinner');
 
-      try {
-        const res = await fetch('http://localhost:3000/');
-        const data = await res.json();
-        const newDiv = document.createElement(data.tag);
-        newDiv.textContent = data.content;
-        container.appendChild(newDiv);
-
-
-        console.log(data);
-      } catch (err) {
-        console.error('Erreur:', err);
-        container.textContent = 'Erreur de récupération de l’API.';
+      if (!form) {
+        console.error('Form not found: #blackBoxForm');
+        return;
       }
+
+      function showSpinner(show) {
+        spinner.style.display = show ? 'inline-block' : 'none';
+      }
+
+      function getFormData() {
+        const formData = new FormData(form);
+        const keyword = formData.get('keyword') || '';
+        const mode = formData.get('mode') || 'auto';
+        const count = Number(formData.get('count') || 0);
+        const strength = Number(formData.get('strength') || 0);
+        const options = [];
+        form.querySelectorAll('input[name="options"]:checked').forEach(cb => options.push(cb.value));
+
+        return { keyword, mode, count, strength, options };
+      }
+
+      async function callApiWithInputs() {
+        const inputs = getFormData();
+        container.innerHTML = '';
+        showSpinner(true);
+
+        try {
+          const url = apiBase;
+          console.log('Calling API (POST) with body:', inputs);
+
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(inputs)
+          });
+
+          if (!res.ok) {
+            container.textContent = `Erreur de récupération de l’API: ${res.status} ${res.statusText}`;
+            console.error('HTTP error', res.status, res.statusText);
+            return;
+          }
+
+          const data = await res.json();
+
+          const isEmptyObject = data && typeof data === 'object' && Object.keys(data).length === 0;
+          if (!data || isEmptyObject || (typeof data.content === 'undefined' && typeof data.tag === 'undefined')) {
+            container.textContent = 'Ça ne renvoie rien.';
+            console.log('API returned empty:', data);
+            return;
+          }
+
+          const tag = data.tag || 'div';
+          const content = typeof data.content !== 'undefined' ? String(data.content) : '';
+
+          if (content === '') {
+            container.textContent = 'Ça ne renvoie rien.';
+            return;
+          }
+
+          const newDiv = document.createElement(tag);
+          newDiv.textContent = content;
+          container.appendChild(newDiv);
+          console.log('API response', data);
+        } catch (err) {
+          console.error('Erreur:', err);
+          container.textContent = 'Erreur de récupération de l’API.';
+        } finally {
+          showSpinner(false);
+        }
+      }
+
+      fetchBtn.addEventListener('click', () => callApiWithInputs());
+      clearBtn.addEventListener('click', () => {
+        form.reset();
+        container.innerHTML = '';
+      });
+
+      console.log('Black box ready — API calls only when clicking the button');
     });
   </script>
 </body>
