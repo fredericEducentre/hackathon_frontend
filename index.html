@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Afficher Contenu API</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f6f8fa;
+      margin: 0;
+      padding: 2rem;
+      color: #333;
+    }
+    #content {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      min-height: 50px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Contenu récupéré depuis l'API</h1>
+  <button id="fetchBtn">Charger le contenu</button>
+
+  <div id="content"></div>
+
+  <script>
+    document.getElementById('fetchBtn').addEventListener('click', async () => {
+      const container = document.getElementById('content');
+
+      try {
+        const res = await fetch('http://localhost:3000/');
+        const data = await res.json();
+        const newDiv = document.createElement(data.tag);
+        newDiv.textContent = data.content;
+        container.appendChild(newDiv);
+
+
+        console.log(data);
+      } catch (err) {
+        console.error('Erreur:', err);
+        container.textContent = 'Erreur de récupération de l’API.';
+      }
+    });
+  </script>
+</body>
+</html>
